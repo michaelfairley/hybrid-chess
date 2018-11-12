@@ -1,0 +1,40 @@
+table {
+  border-spacing: 0px;
+  border: 1px black solid;
+  margin: 0 auto;
+}
+
+td {
+  width: 70px;
+  height: 70px;
+  margin: 0;
+  padding: 0;
+  background-size: 100% auto;
+}
+
+td.white {
+  background-color: white;
+}
+
+td.black {
+  background-color: gray;
+}
+
+img {
+  width: 100%;
+  height: 100%;
+}
+
+td.black_king   { background-image: url("images/black_king.svg"); }
+td.black_queen  { background-image: url("images/black_queen.svg"); }
+td.black_rook   { background-image: url("images/black_rook.svg"); }
+td.black_bishop { background-image: url("images/black_bishop.svg"); }
+td.black_knight { background-image: url("images/black_knight.svg"); }
+td.black_pawn   { background-image: url("images/black_pawn.svg"); }
+
+td.white_king   { background-image: url("images/white_king.svg"); }
+td.white_queen  { background-image: url("images/white_queen.svg"); }
+td.white_rook   { background-image: url("images/white_rook.svg"); }
+td.white_bishop { background-image: url("images/white_bishop.svg"); }
+td.white_knight { background-image: url("images/white_knight.svg"); }
+td.white_pawn   { background-image: url("images/white_pawn.svg"); }
