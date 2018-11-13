@@ -16,17 +16,27 @@ cfg_if! {
     }
 }
 
-#[wasm_bindgen]
-extern {
-    fn alert(s: &str);
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Loc(i32);
+
+impl Loc {
+  fn x(self) -> usize { (self.0 % 8) as usize }
+  fn y(self) -> usize { (self.0 / 8) as usize }
+
+  fn d(self, dx: i32, dy: i32) -> Option<Self> {
+    let nx = self.x() as i32 + dx;
+    let ny = self.y() as i32 + dy;
+
+    if nx < 0 || nx > 7 || ny < 0 || ny > 7 {
+      None
+    } else {
+      Some(Loc(ny * 8 + nx))
+    }
+  }
 }
 
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, hybrid-chess!");
-}
-
-#[repr(u32)]
+#[repr(i32)]
 #[derive(Clone, Copy, PartialEq)]
 enum PieceType {
   King = 0,
@@ -89,34 +99,148 @@ impl Board {
     }
   }
 
-  fn piece(&self, loc: u32) -> Option<Piece> {
-    let x = (loc % 8) as usize;
-    let y = (loc / 8) as usize;
-
-    self.pieces[y][x]
+  fn piece(&self, loc: Loc) -> Option<Piece> {
+    self.pieces[loc.y()][loc.x()]
   }
 
-  pub fn piece_at(&self, loc: u32) -> Option<u32> {
+  pub fn move_(&self, from: i32, to: i32) -> Self {
+    let to = Loc(to);
+    let from = Loc(from);
+
+    let mut new_pieces = self.pieces.clone();
+
+    let piece = std::mem::replace(&mut new_pieces[from.y()][from.x()], None);
+    assert!(piece.is_some());
+    new_pieces[to.y()][to.x()] = piece;
+
+    // TODO: capture
+    // TODO: merge
+
+    Self{
+      pieces: new_pieces,
+    }
+  }
+
+  pub fn piece_at(&self, loc: i32) -> Option<u32> {
+    let loc = Loc(loc);
     let piece = self.piece(loc);
 
     piece.map(|p| p.type_ as u32)
   }
 
-  pub fn is_white_at(&self, loc: u32) -> bool {
+  pub fn is_white_at(&self, loc: i32) -> bool {
+    let loc = Loc(loc);
     let piece = self.piece(loc);
 
     piece.map(|p| p.color == Color::White).unwrap_or(false)
   }
 
-  pub fn moves_from(&self, loc: u32) -> Option<Box<[u32]>> {
+  pub fn moves_from(&self, loc: i32) -> Option<Box<[i32]>> {
+    let loc = Loc(loc);
     let piece = self.piece(loc);
 
     piece.map(|p| {
-      let mut dests = vec![19];
+      let mut dests = vec![];
+      fn try_push(dests: &mut Vec<Loc>, loc: Option<Loc>) {
+        if let Some(loc) = loc {
+          dests.push(loc);
+        }
+      }
 
-      dests.push(19u32);
+      match p.type_ {
+        PieceType::Pawn => {
+          let dy = match p.color {
+            Color::White => -1,
+            Color::Black => 1,
+          };
 
-      dests.into_boxed_slice()
+          try_push(&mut dests, loc.d(0, dy));
+
+          if match p.color {
+            Color::White => loc.y() == 6,
+            Color::Black => loc.y() == 1,
+          } {
+            try_push(&mut dests, loc.d(0, dy * 2));
+          }
+
+          // TODO: attacks
+          // TODO: blocked
+        },
+        PieceType::Rook => {
+          let ds = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+
+          for &(dx, dy) in &ds {
+            let mut loc = loc;
+
+            loop {
+              if let Some(new_loc) = loc.d(dx, dy) {
+                loc = new_loc;
+                dests.push(loc);
+                if self.piece(new_loc).is_some() { break; }                
+              } else {
+                break
+              }
+            }
+          }
+        },
+        PieceType::Bishop => {
+          let ds = [(1, 1), (-1, 1), (1, -1), (-1, -1)];
+
+          for &(dx, dy) in &ds {
+            let mut loc = loc;
+
+            loop {
+              if let Some(new_loc) = loc.d(dx, dy) {
+                loc = new_loc;
+                dests.push(new_loc);
+                if self.piece(new_loc).is_some() { break; }                
+              } else {
+                break
+              }
+            }
+          }
+        },
+        PieceType::Queen => {
+          let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
+
+          for &(dx, dy) in &ds {
+            let mut loc = loc;
+
+            loop {
+              if let Some(new_loc) = loc.d(dx, dy) {
+                loc = new_loc;
+                dests.push(loc);
+                if self.piece(new_loc).is_some() { break; }                
+              } else {
+                break
+              }
+            }
+          }
+        },
+        PieceType::King => {
+          let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
+
+          for &(dx, dy) in &ds {
+            if let Some(new_loc) = loc.d(dx, dy) {
+              dests.push(new_loc);
+            }
+          }
+        },
+        PieceType::Knight => {
+          let ds = [(1, 2), (2, 1),
+                    (-1, 2), (2, -1),
+                    (1, -2), (-2, 1),
+                    (-1, -2), (-2, -1)];
+
+          for &(dx, dy) in &ds {
+            if let Some(new_loc) = loc.d(dx, dy) {
+              dests.push(new_loc);
+            }
+          }
+        },
+      }
+
+      dests.into_iter().map(|i| i.0).collect::<Vec<_>>().into_boxed_slice()
     })
   }
 }

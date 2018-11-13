@@ -13,28 +13,39 @@ td {
 }
 
 td.white {
-  background-color: white;
+  background-color: #ffffff;
 }
 
 td.black {
-  background-color: gray;
+  background-color: #808080;
 }
 
-img {
-  width: 100%;
-  height: 100%;
+td.selected.black {
+  background-color: #c0c000;
 }
 
-td.black_king   { background-image: url("images/black_king.svg"); }
-td.black_queen  { background-image: url("images/black_queen.svg"); }
-td.black_rook   { background-image: url("images/black_rook.svg"); }
-td.black_bishop { background-image: url("images/black_bishop.svg"); }
-td.black_knight { background-image: url("images/black_knight.svg"); }
-td.black_pawn   { background-image: url("images/black_pawn.svg"); }
+td.selected.white {
+  background-color: #dddd00;
+}
 
-td.white_king   { background-image: url("images/white_king.svg"); }
-td.white_queen  { background-image: url("images/white_queen.svg"); }
-td.white_rook   { background-image: url("images/white_rook.svg"); }
-td.white_bishop { background-image: url("images/white_bishop.svg"); }
-td.white_knight { background-image: url("images/white_knight.svg"); }
-td.white_pawn   { background-image: url("images/white_pawn.svg"); }
+td.available-move.black {
+  background-color: #209920;
+}
+
+td.available-move.white {
+  background-color: #22dd22;
+}
+
+.black_king   { background-image: url("images/black_king.svg"); }
+.black_queen  { background-image: url("images/black_queen.svg"); }
+.black_rook   { background-image: url("images/black_rook.svg"); }
+.black_bishop { background-image: url("images/black_bishop.svg"); }
+.black_knight { background-image: url("images/black_knight.svg"); }
+.black_pawn   { background-image: url("images/black_pawn.svg"); }
+
+.white_king   { background-image: url("images/white_king.svg"); }
+.white_queen  { background-image: url("images/white_queen.svg"); }
+.white_rook   { background-image: url("images/white_rook.svg"); }
+.white_bishop { background-image: url("images/white_bishop.svg"); }
+.white_knight { background-image: url("images/white_knight.svg"); }
+.white_pawn   { background-image: url("images/white_pawn.svg"); }

@@ -1,5 +1,8 @@
 import { Board } from "hybrid-chess";
 
+var board = Board.fresh();
+var state = {mode: "playing"};
+
 function render() {
   const table = document.getElementsByTagName("tbody")[0];
   for (var y = 0; y < 8; y++) {
@@ -9,7 +12,11 @@ function render() {
       
       const loc = y * 8 + x;
 
-      td.className = color(x, y);
+      td.className = tile_color(x, y);
+
+      if (state.mode == "selected" && state.available_moves.includes(loc)) {
+        td.classList.add("available-move");
+      }
       
       const piece = board.piece_at(loc);
       if (piece != null) {
@@ -32,15 +39,17 @@ function render() {
 
         td.classList.add(image_class);
 
-        // var img = document.createElement("img");
-        // img.setAttribute("src", "images/" + image_name);
-        // td.appendChild(img);
+        if (state.mode === "selected") {
+          if (state.piece == loc) {
+            td.classList.add("selected");
+          }
+        }
       }
     }
   }
 }
 
-function color(x, y) {
+function tile_color(x, y) {
   if ((x + y) % 2 == 0) {
     return "white";
   } else {
@@ -48,5 +57,54 @@ function color(x, y) {
   }
 }
 
-var board = Board.fresh();
+function clicked(x, y) {
+  const loc = y * 8 + x;
+
+  const origState = state;
+
+  if (state.mode === "playing") {
+    const moves_from = board.moves_from(loc);
+
+    if (moves_from != null) {
+      state = {
+        mode: "selected",
+        piece: loc,
+        available_moves: moves_from,
+      };
+    }
+  } else if (state.mode === "selected") {
+    if (state.available_moves.includes(loc)) {
+      board = board.move_(state.piece, loc);
+      state = {mode: "playing"};
+    } else if (state.piece == loc) {
+      state = {mode: "playing"};
+    }
+  }
+
+  if (state != origState) { render(); }
+}
+
+function set_up_event_handlers() {
+  const table = document.getElementsByTagName("tbody")[0];
+  table.addEventListener("click", function(event) {
+    const td = event.target;
+    const tr = td.parentNode;
+
+    const y = Array.from(table.children).indexOf(tr);
+    const x = Array.from(tr.children).indexOf(td);
+
+    clicked(x, y);
+
+    event.stopPropagation();
+  });
+
+  window.addEventListener("click", function(event) {
+    if (state.mode == "selected") {
+      state = {mode: "playing"};
+      render();
+    }
+  });
+}
+
+set_up_event_handlers();
 render();
