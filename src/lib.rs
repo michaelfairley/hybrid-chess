@@ -141,11 +141,6 @@ impl Board {
 
     piece.map(|p| {
       let mut dests = vec![];
-      fn try_push(dests: &mut Vec<Loc>, loc: Option<Loc>) {
-        if let Some(loc) = loc {
-          dests.push(loc);
-        }
-      }
 
       match p.type_ {
         PieceType::Pawn => {
@@ -153,18 +148,34 @@ impl Board {
             Color::White => -1,
             Color::Black => 1,
           };
+          
+          // Forward movement
+          if let Some(new_loc) = loc.d(0, dy) {
+            if self.piece(new_loc).is_none() {
+              dests.push(new_loc);
 
-          try_push(&mut dests, loc.d(0, dy));
-
-          if match p.color {
-            Color::White => loc.y() == 6,
-            Color::Black => loc.y() == 1,
-          } {
-            try_push(&mut dests, loc.d(0, dy * 2));
+              // Double move from starting position
+              if match p.color {
+                Color::White => loc.y() == 6,
+                Color::Black => loc.y() == 1,
+              } {
+                if let Some(new_loc) = loc.d(0, dy * 2) {
+                  if self.piece(new_loc).is_none() {
+                    dests.push(new_loc);
+                  }
+                }
+              }
+            }
           }
-
-          // TODO: attacks
-          // TODO: blocked
+          
+          // Attack
+          for &dx in &[-1, 1] {
+            if let Some(new_loc) = loc.d(dx, dy) {
+              if self.piece(new_loc).is_some() {
+                dests.push(new_loc);
+              }
+            } 
+          }
         },
         PieceType::Rook => {
           let ds = [(1, 0), (-1, 0), (0, 1), (0, -1)];
