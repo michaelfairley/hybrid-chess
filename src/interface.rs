@@ -77,6 +77,10 @@ impl Interface {
         if images.len() > 1 {
           td.class_list().add_1("hybrid").unwrap();
         }
+
+        if piece.is_king() && self.board.is_check(piece.is_white()) {
+          td.class_list().add_1("check").unwrap();
+        }
       }
     }
   }
