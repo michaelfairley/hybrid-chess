@@ -41,3 +41,11 @@ td.available-move.black {
 td.available-move.white {
   background-color: #22dd22;
 }
+
+td.check.black {
+  background-color: #c00000;
+}
+
+td.check.white {
+  background-color: #dd0000;
+}

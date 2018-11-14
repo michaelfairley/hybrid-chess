@@ -1,10 +1,15 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
+extern crate web_sys;
+#[macro_use]
+extern crate matches;
 
 mod utils;
+pub mod interface;
+
+pub use interface::Interface;
 
 use cfg_if::cfg_if;
-use wasm_bindgen::prelude::*;
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -57,7 +62,7 @@ impl Piece {
   #[inline] pub fn is_empty(self) -> bool { self.0 == 0 }
 
   #[inline] pub fn is_white(self) -> bool { (self.0 & COLOR_MASK) == WHITE }
-  #[inline] pub fn is_black(self) -> bool { (self.0 & COLOR_MASK) == BLACK }
+  // #[inline] pub fn is_black(self) -> bool { (self.0 & COLOR_MASK) == BLACK }
 
   #[inline] pub fn is_king(self)   -> bool { (self.0 & KING)   != 0 }
   #[inline] pub fn is_queen(self)  -> bool { (self.0 & QUEEN)  != 0 }
@@ -69,12 +74,12 @@ impl Piece {
   #[inline] pub fn merge(self, other: Self) -> Self { Piece(self.0 | other.0) }
 }
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 pub struct Board {
   pieces: [Piece; 64],
 }
 
-#[wasm_bindgen]
+// #[wasm_bindgen]
 impl Board {
   pub fn fresh() -> Self{
     Self{
@@ -109,10 +114,7 @@ impl Board {
     self.pieces[loc.0 as usize]
   }
 
-  pub fn move_(&self, from: i32, to: i32) -> Self {
-    let from = Loc(from);
-    let to = Loc(to);
-
+  pub fn move_(&self, from: Loc, to: Loc) -> Self {
     let mut new_pieces = self.pieces.clone();
 
     let from_piece = std::mem::replace(&mut new_pieces[from.0 as usize], Piece::empty());
@@ -137,23 +139,17 @@ impl Board {
     self.pieces[loc as usize].0
   }
 
-  // pub fn is_check(&self, white: bool) -> bool {
-  //   let king_loc = self.pieces.iter()
-  //     .enumerate()
-  //     .filter(|(_, &p)| p != 0)
-  //     .filter(|(_, &p)| (p & COLOR_MASK) == if white { WHITE } else { BLACK })
-  //     .filter(|(_, &p)| (p & COLOR_MASK) == if white { WHITE } else { BLACK })
-  //     .next().unwrap().0 as i32;
+  pub fn is_check(&self, white: bool) -> bool {
+    let king_loc = self.pieces.iter().position(|p| p.is_king() && (p.is_white() == white)).expect("There should be a king") as i32;
 
-  //   self.pieces.iter()
-  //     .enumerate()
-  //     .filter(|(_, &p)| p != 0)
-  //     .filter(|(_, &p)| (p & COLOR_MASK) == if !white { WHITE } else { BLACK })
-  //     .any(|(i, _)| self.moves_from(i).unwrap().iter().any(|&l| l == king_loc))
-  // }
+    self.pieces.iter()
+      .enumerate()
+      .filter(|(_, &p)| !p.is_empty())
+      .filter(|(_, &p)| p.is_white() != white)
+      .any(|(i, _)| self.moves_from(Loc(i as i32)).unwrap().iter().any(|&l| l.0 == king_loc))
+  }
 
-  pub fn moves_from(&self, loc: i32) -> Option<Box<[i32]>> {
-    let loc = Loc(loc);
+  pub fn moves_from(&self, loc: Loc) -> Option<Vec<Loc>> {
     let piece = self.piece(loc);
 
     if piece.is_empty() { return None };
@@ -262,6 +258,6 @@ impl Board {
       }
     }
 
-    Some(dests.into_iter().map(|i| i.0).collect::<Vec<_>>().into_boxed_slice())
+    Some(dests)
   }
 }
