@@ -10,6 +10,12 @@ td {
   margin: 0;
   padding: 0;
   background-size: 100% auto;
+  background-repeat: no-repeat;
+  background-position: center center, top left, top right, bottom left, bottom right;
+}
+
+td.hybrid {
+  background-size: 80% auto, 50% auto, 50% auto, 50% auto, 50% auto;
 }
 
 td.white {
@@ -35,17 +41,3 @@ td.available-move.black {
 td.available-move.white {
   background-color: #22dd22;
 }
-
-.black_king   { background-image: url("images/black_king.svg"); }
-.black_queen  { background-image: url("images/black_queen.svg"); }
-.black_rook   { background-image: url("images/black_rook.svg"); }
-.black_bishop { background-image: url("images/black_bishop.svg"); }
-.black_knight { background-image: url("images/black_knight.svg"); }
-.black_pawn   { background-image: url("images/black_pawn.svg"); }
-
-.white_king   { background-image: url("images/white_king.svg"); }
-.white_queen  { background-image: url("images/white_queen.svg"); }
-.white_rook   { background-image: url("images/white_rook.svg"); }
-.white_bishop { background-image: url("images/white_bishop.svg"); }
-.white_knight { background-image: url("images/white_knight.svg"); }
-.white_pawn   { background-image: url("images/white_pawn.svg"); }

@@ -3,6 +3,19 @@ import { Board } from "hybrid-chess";
 var board = Board.fresh();
 var state = {mode: "playing"};
 
+const PIECES = {
+  king: 1,
+  queen: 2,
+  rook: 4,
+  bishop: 8,
+  knight: 16,
+  pawn: 32,
+};
+
+const COLOR_MASK = 0x80;
+const WHITE = 0x80;
+const BLACK = 0x00;
+
 function render() {
   const table = document.getElementsByTagName("tbody")[0];
   for (var y = 0; y < 8; y++) {
@@ -17,27 +30,30 @@ function render() {
       if (state.mode == "selected" && state.available_moves.includes(loc)) {
         td.classList.add("available-move");
       }
-      
+
+      td.style.backgroundImage = "";
+
+      // TODO: just access the data off the heap directly
       const piece = board.piece_at(loc);
-      if (piece != null) {
-        const white = board.is_white_at(loc);
+      if (piece != 0) {
+        const white = ((piece & COLOR_MASK) == WHITE);
 
-        const piece_name = {
-          0: "king",
-          1: "queen",
-          2: "rook",
-          3: "bishop",
-          4: "knight",
-          5: "pawn",
-        }[piece];
+        for (const piece_name in PIECES) {
+          if (PIECES.hasOwnProperty(piece_name)) {
+            const piece_bit = PIECES[piece_name];
 
-        if (piece_name === undefined) {
-          console.log("Don't know what piece " + piece + " is");
+            if ((piece & piece_bit) != 0) {
+              const url = 'url("images/' + (white ? "white" : "black") + '_' + piece_name + '.svg")';
+
+              if (td.style.backgroundImage == "") {
+                td.style.backgroundImage = url;
+              } else {
+                td.style.backgroundImage += ', ' + url;
+                td.classList.add("hybrid");
+              }
+            }
+          }
         }
-
-        const image_class = (white ? "white" : "black") + "_" + piece_name;
-
-        td.classList.add(image_class);
 
         if (state.mode === "selected") {
           if (state.piece == loc) {

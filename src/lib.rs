@@ -36,32 +36,23 @@ impl Loc {
   }
 }
 
-#[repr(i32)]
-#[derive(Clone, Copy, PartialEq)]
-enum PieceType {
-  King = 0,
-  Queen = 1,
-  Rook = 2,
-  Bishop = 3,
-  Knight = 4,
-  Pawn = 5
-}
+type Piece = u8;
 
-#[derive(Clone, Copy, PartialEq)]
-enum Color {
-  Black,
-  White,
-}
+const KING: u8       = 1;
+const QUEEN: u8      = 2;
+const ROOK: u8       = 4;
+const BISHOP: u8     = 8;
+const KNIGHT: u8     = 16;
+const PAWN: u8       = 32;
 
-#[derive(Clone, Copy)]
-struct Piece {
-  type_: PieceType,
-  color: Color, 
-}
+const WHITE: u8      = 0x80;
+const BLACK: u8      = 0x00;
+const COLOR_MASK: u8 = 0x80;
+
 
 #[wasm_bindgen]
 pub struct Board {
-  pieces: [[Option<Piece>; 8]; 8],
+  pieces: [[Piece; 8]; 8],
 }
 
 #[wasm_bindgen]
@@ -70,36 +61,36 @@ impl Board {
     Self{
       pieces: [
         [
-          Some(Piece{ type_: PieceType::Rook, color: Color::Black }),
-          Some(Piece{ type_: PieceType::Knight, color: Color::Black }),
-          Some(Piece{ type_: PieceType::Bishop, color: Color::Black }),
-          Some(Piece{ type_: PieceType::Queen, color: Color::Black }),
-          Some(Piece{ type_: PieceType::King, color: Color::Black }),
-          Some(Piece{ type_: PieceType::Bishop, color: Color::Black }),
-          Some(Piece{ type_: PieceType::Knight, color: Color::Black }),
-          Some(Piece{ type_: PieceType::Rook, color: Color::Black }),
+          ROOK | BLACK,
+          KNIGHT | BLACK,
+          BISHOP | BLACK,
+          QUEEN | BLACK,
+          KING | BLACK,
+          BISHOP | BLACK,
+          KNIGHT | BLACK,
+          ROOK | BLACK,
         ],
-        [Some(Piece{ type_: PieceType::Pawn, color: Color::Black }); 8],
-        [None; 8],
-        [None; 8],
-        [None; 8],
-        [None; 8],
-        [Some(Piece{ type_: PieceType::Pawn, color: Color::White }); 8],
+        [PAWN | BLACK; 8],
+        [0; 8],
+        [0; 8],
+        [0; 8],
+        [0; 8],
+        [PAWN | WHITE; 8],
         [
-          Some(Piece{ type_: PieceType::Rook, color: Color::White }),
-          Some(Piece{ type_: PieceType::Knight, color: Color::White }),
-          Some(Piece{ type_: PieceType::Bishop, color: Color::White }),
-          Some(Piece{ type_: PieceType::Queen, color: Color::White }),
-          Some(Piece{ type_: PieceType::King, color: Color::White }),
-          Some(Piece{ type_: PieceType::Bishop, color: Color::White }),
-          Some(Piece{ type_: PieceType::Knight, color: Color::White }),
-          Some(Piece{ type_: PieceType::Rook, color: Color::White }),
+          ROOK | WHITE,
+          KNIGHT | WHITE,
+          BISHOP | WHITE,
+          QUEEN | WHITE,
+          KING | WHITE,
+          BISHOP | WHITE,
+          KNIGHT | WHITE,
+          ROOK | WHITE,
         ],
       ]
     }
   }
 
-  fn piece(&self, loc: Loc) -> Option<Piece> {
+  fn piece(&self, loc: Loc) -> Piece {
     self.pieces[loc.y()][loc.x()]
   }
 
@@ -109,149 +100,148 @@ impl Board {
 
     let mut new_pieces = self.pieces.clone();
 
-    let piece = std::mem::replace(&mut new_pieces[from.y()][from.x()], None);
-    assert!(piece.is_some());
-    new_pieces[to.y()][to.x()] = piece;
+    let piece = std::mem::replace(&mut new_pieces[from.y()][from.x()], 0);
+    assert!(piece != 0);
+    let dest_piece = std::mem::replace(&mut new_pieces[to.y()][to.x()], piece);
+    if dest_piece != 0 && ((dest_piece & COLOR_MASK) == (piece & COLOR_MASK)) {
+      new_pieces[to.y()][to.x()] |= dest_piece;
+    }
 
     // TODO: capture
-    // TODO: merge
 
     Self{
       pieces: new_pieces,
     }
   }
 
-  pub fn piece_at(&self, loc: i32) -> Option<u32> {
+  pub fn piece_at(&self, loc: i32) -> u8 {
     let loc = Loc(loc);
     let piece = self.piece(loc);
 
-    piece.map(|p| p.type_ as u32)
+    piece
   }
 
   pub fn is_white_at(&self, loc: i32) -> bool {
     let loc = Loc(loc);
     let piece = self.piece(loc);
 
-    piece.map(|p| p.color == Color::White).unwrap_or(false)
+    Self::is_white(piece)
+  }
+
+  fn is_white(piece: Piece) -> bool {
+    (piece & COLOR_MASK) == WHITE
   }
 
   pub fn moves_from(&self, loc: i32) -> Option<Box<[i32]>> {
     let loc = Loc(loc);
     let piece = self.piece(loc);
 
-    piece.map(|p| {
-      let mut dests = vec![];
+    if piece == 0 { return None };
 
-      match p.type_ {
-        PieceType::Pawn => {
-          let dy = match p.color {
-            Color::White => -1,
-            Color::Black => 1,
-          };
-          
-          // Forward movement
-          if let Some(new_loc) = loc.d(0, dy) {
-            if self.piece(new_loc).is_none() {
-              dests.push(new_loc);
+    let mut dests = vec![];
 
-              // Double move from starting position
-              if match p.color {
-                Color::White => loc.y() == 6,
-                Color::Black => loc.y() == 1,
-              } {
-                if let Some(new_loc) = loc.d(0, dy * 2) {
-                  if self.piece(new_loc).is_none() {
-                    dests.push(new_loc);
-                  }
-                }
-              }
-            }
-          }
-          
-          // Attack
-          for &dx in &[-1, 1] {
-            if let Some(new_loc) = loc.d(dx, dy) {
-              if self.piece(new_loc).is_some() {
+    if piece & PAWN != 0 {
+      let dy = if Self::is_white(piece) { -1 } else { 1 };
+      
+      // Forward movement
+      if let Some(new_loc) = loc.d(0, dy) {
+        if self.piece(new_loc) == 0 {
+          dests.push(new_loc);
+
+          // Double move from starting position
+          let starting_row = if Self::is_white(piece) { 6 } else { 1 };
+          if starting_row == loc.y() {
+            if let Some(new_loc) = loc.d(0, dy * 2) {
+              if self.piece(new_loc) == 0 {
                 dests.push(new_loc);
               }
-            } 
-          }
-        },
-        PieceType::Rook => {
-          let ds = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-
-          for &(dx, dy) in &ds {
-            let mut loc = loc;
-
-            loop {
-              if let Some(new_loc) = loc.d(dx, dy) {
-                loc = new_loc;
-                dests.push(loc);
-                if self.piece(new_loc).is_some() { break; }                
-              } else {
-                break
-              }
             }
           }
-        },
-        PieceType::Bishop => {
-          let ds = [(1, 1), (-1, 1), (1, -1), (-1, -1)];
-
-          for &(dx, dy) in &ds {
-            let mut loc = loc;
-
-            loop {
-              if let Some(new_loc) = loc.d(dx, dy) {
-                loc = new_loc;
-                dests.push(new_loc);
-                if self.piece(new_loc).is_some() { break; }                
-              } else {
-                break
-              }
-            }
-          }
-        },
-        PieceType::Queen => {
-          let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
-
-          for &(dx, dy) in &ds {
-            let mut loc = loc;
-
-            loop {
-              if let Some(new_loc) = loc.d(dx, dy) {
-                loc = new_loc;
-                dests.push(loc);
-                if self.piece(new_loc).is_some() { break; }                
-              } else {
-                break
-              }
-            }
-          }
-        },
-        PieceType::King => {
-          let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
-
-          for &(dx, dy) in &ds {
-            if let Some(new_loc) = loc.d(dx, dy) {
-              dests.push(new_loc);
-            }
-          }
-        },
-        PieceType::Knight => {
-          let ds = [(1, 2), (2, 1),
-                    (-1, 2), (2, -1),
-                    (1, -2), (-2, 1),
-                    (-1, -2), (-2, -1)];
-
-          for &(dx, dy) in &ds {
-            if let Some(new_loc) = loc.d(dx, dy) {
-              dests.push(new_loc);
-            }
-          }
-        },
+        }
       }
+      
+      // Attack
+      for &dx in &[-1, 1] {
+        if let Some(new_loc) = loc.d(dx, dy) {
+          if self.piece(new_loc) != 0 {
+            dests.push(new_loc);
+          }
+        } 
+      }
+    }
+    if piece & ROOK != 0 {
+      let ds = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
-      dests.into_iter().map(|i| i.0).collect::<Vec<_>>().into_boxed_slice()
-    })
+      for &(dx, dy) in &ds {
+        let mut loc = loc;
+
+        loop {
+          if let Some(new_loc) = loc.d(dx, dy) {
+            loc = new_loc;
+            dests.push(loc);
+            if self.piece(new_loc) != 0 { break; }                
+          } else {
+            break
+          }
+        }
+      }
+    }
+    if piece & BISHOP != 0 {
+      let ds = [(1, 1), (-1, 1), (1, -1), (-1, -1)];
+
+      for &(dx, dy) in &ds {
+        let mut loc = loc;
+
+        loop {
+          if let Some(new_loc) = loc.d(dx, dy) {
+            loc = new_loc;
+            dests.push(new_loc);
+            if self.piece(new_loc) != 0 { break; }                
+          } else {
+            break
+          }
+        }
+      }
+    }
+    if piece & QUEEN != 0 {
+      let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
+
+      for &(dx, dy) in &ds {
+        let mut loc = loc;
+
+        loop {
+          if let Some(new_loc) = loc.d(dx, dy) {
+            loc = new_loc;
+            dests.push(loc);
+            if self.piece(new_loc) != 0 { break; }                
+          } else {
+            break
+          }
+        }
+      }
+    }
+    if piece & KING != 0 {
+      let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
+
+      for &(dx, dy) in &ds {
+        if let Some(new_loc) = loc.d(dx, dy) {
+          dests.push(new_loc);
+        }
+      }
+    }
+    if piece & KNIGHT != 0 {
+      let ds = [(1, 2), (2, 1),
+                (-1, 2), (2, -1),
+                (1, -2), (-2, 1),
+                (-1, -2), (-2, -1)];
+
+      for &(dx, dy) in &ds {
+        if let Some(new_loc) = loc.d(dx, dy) {
+          dests.push(new_loc);
+        }
+      }
+    }
+
+    Some(dests.into_iter().map(|i| i.0).collect::<Vec<_>>().into_boxed_slice())
   }
 }

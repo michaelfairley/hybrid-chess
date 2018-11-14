@@ -1,11 +1,14 @@
-merging
-mate
+check
+don't allow moving into check
+checkmate
+stalemate
 choose side
 ai
 
 animation
 rewind through turns
 show captured pieces
+drag and drop
 
 better html sizing
 mobile
