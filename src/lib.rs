@@ -52,7 +52,7 @@ const COLOR_MASK: u8 = 0x80;
 
 #[wasm_bindgen]
 pub struct Board {
-  pieces: [[Piece; 8]; 8],
+  pieces: [Piece; 64],
 }
 
 #[wasm_bindgen]
@@ -60,38 +60,34 @@ impl Board {
   pub fn fresh() -> Self{
     Self{
       pieces: [
-        [
-          ROOK | BLACK,
-          KNIGHT | BLACK,
-          BISHOP | BLACK,
-          QUEEN | BLACK,
-          KING | BLACK,
-          BISHOP | BLACK,
-          KNIGHT | BLACK,
-          ROOK | BLACK,
-        ],
-        [PAWN | BLACK; 8],
-        [0; 8],
-        [0; 8],
-        [0; 8],
-        [0; 8],
-        [PAWN | WHITE; 8],
-        [
-          ROOK | WHITE,
-          KNIGHT | WHITE,
-          BISHOP | WHITE,
-          QUEEN | WHITE,
-          KING | WHITE,
-          BISHOP | WHITE,
-          KNIGHT | WHITE,
-          ROOK | WHITE,
-        ],
+        ROOK | BLACK,
+        KNIGHT | BLACK,
+        BISHOP | BLACK,
+        QUEEN | BLACK,
+        KING | BLACK,
+        BISHOP | BLACK,
+        KNIGHT | BLACK,
+        ROOK | BLACK,
+        PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE,
+        ROOK | WHITE,
+        KNIGHT | WHITE,
+        BISHOP | WHITE,
+        QUEEN | WHITE,
+        KING | WHITE,
+        BISHOP | WHITE,
+        KNIGHT | WHITE,
+        ROOK | WHITE,
       ]
     }
   }
 
   fn piece(&self, loc: Loc) -> Piece {
-    self.pieces[loc.y()][loc.x()]
+    self.pieces[loc.0 as usize]
   }
 
   pub fn move_(&self, from: i32, to: i32) -> Self {
@@ -100,11 +96,11 @@ impl Board {
 
     let mut new_pieces = self.pieces.clone();
 
-    let piece = std::mem::replace(&mut new_pieces[from.y()][from.x()], 0);
+    let piece = std::mem::replace(&mut new_pieces[from.0 as usize], 0);
     assert!(piece != 0);
-    let dest_piece = std::mem::replace(&mut new_pieces[to.y()][to.x()], piece);
+    let dest_piece = std::mem::replace(&mut new_pieces[to.0 as usize], piece);
     if dest_piece != 0 && ((dest_piece & COLOR_MASK) == (piece & COLOR_MASK)) {
-      new_pieces[to.y()][to.x()] |= dest_piece;
+      new_pieces[to.0 as usize] |= dest_piece;
     }
 
     // TODO: capture
@@ -115,17 +111,7 @@ impl Board {
   }
 
   pub fn piece_at(&self, loc: i32) -> u8 {
-    let loc = Loc(loc);
-    let piece = self.piece(loc);
-
-    piece
-  }
-
-  pub fn is_white_at(&self, loc: i32) -> bool {
-    let loc = Loc(loc);
-    let piece = self.piece(loc);
-
-    Self::is_white(piece)
+    self.pieces[loc as usize]
   }
 
   fn is_white(piece: Piece) -> bool {
