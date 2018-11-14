@@ -36,8 +36,6 @@ impl Loc {
   }
 }
 
-type Piece = u8;
-
 const KING: u8       = 1;
 const QUEEN: u8      = 2;
 const ROOK: u8       = 4;
@@ -49,6 +47,27 @@ const WHITE: u8      = 0x80;
 const BLACK: u8      = 0x00;
 const COLOR_MASK: u8 = 0x80;
 
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Piece(u8);
+
+impl Piece {
+  #[inline] pub fn empty() -> Self { Piece(0) }
+
+  #[inline] pub fn is_empty(self) -> bool { self.0 == 0 }
+
+  #[inline] pub fn is_white(self) -> bool { (self.0 & COLOR_MASK) == WHITE }
+  #[inline] pub fn is_black(self) -> bool { (self.0 & COLOR_MASK) == BLACK }
+
+  #[inline] pub fn is_king(self)   -> bool { (self.0 & KING)   != 0 }
+  #[inline] pub fn is_queen(self)  -> bool { (self.0 & QUEEN)  != 0 }
+  #[inline] pub fn is_rook(self)   -> bool { (self.0 & ROOK)   != 0 }
+  #[inline] pub fn is_bishop(self) -> bool { (self.0 & BISHOP) != 0 }
+  #[inline] pub fn is_knight(self) -> bool { (self.0 & KNIGHT) != 0 }
+  #[inline] pub fn is_pawn(self)   -> bool { (self.0 & PAWN)   != 0 }
+
+  #[inline] pub fn merge(self, other: Self) -> Self { Piece(self.0 | other.0) }
+}
 
 #[wasm_bindgen]
 pub struct Board {
@@ -60,28 +79,28 @@ impl Board {
   pub fn fresh() -> Self{
     Self{
       pieces: [
-        ROOK | BLACK,
-        KNIGHT | BLACK,
-        BISHOP | BLACK,
-        QUEEN | BLACK,
-        KING | BLACK,
-        BISHOP | BLACK,
-        KNIGHT | BLACK,
-        ROOK | BLACK,
-        PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK, PAWN | BLACK,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE, PAWN | WHITE,
-        ROOK | WHITE,
-        KNIGHT | WHITE,
-        BISHOP | WHITE,
-        QUEEN | WHITE,
-        KING | WHITE,
-        BISHOP | WHITE,
-        KNIGHT | WHITE,
-        ROOK | WHITE,
+        Piece(ROOK | BLACK),
+        Piece(KNIGHT | BLACK),
+        Piece(BISHOP | BLACK),
+        Piece(QUEEN | BLACK),
+        Piece(KING | BLACK),
+        Piece(BISHOP | BLACK),
+        Piece(KNIGHT | BLACK),
+        Piece(ROOK | BLACK),
+        Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK),
+        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
+        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
+        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
+        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
+        Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE),
+        Piece(ROOK | WHITE),
+        Piece(KNIGHT | WHITE),
+        Piece(BISHOP | WHITE),
+        Piece(QUEEN | WHITE),
+        Piece(KING | WHITE),
+        Piece(BISHOP | WHITE),
+        Piece(KNIGHT | WHITE),
+        Piece(ROOK | WHITE),
       ]
     }
   }
@@ -91,18 +110,22 @@ impl Board {
   }
 
   pub fn move_(&self, from: i32, to: i32) -> Self {
-    let to = Loc(to);
     let from = Loc(from);
+    let to = Loc(to);
 
     let mut new_pieces = self.pieces.clone();
 
-    let piece = std::mem::replace(&mut new_pieces[from.0 as usize], 0);
-    assert!(piece != 0);
-    let dest_piece = std::mem::replace(&mut new_pieces[to.0 as usize], piece);
-    if dest_piece != 0 && ((dest_piece & COLOR_MASK) == (piece & COLOR_MASK)) {
-      new_pieces[to.0 as usize] |= dest_piece;
-    }
-
+    let from_piece = std::mem::replace(&mut new_pieces[from.0 as usize], Piece::empty());
+    assert!(!from_piece.is_empty());
+    let to_piece = self.pieces[to.0 as usize];
+    
+    let new_piece = if from_piece.is_white() == to_piece.is_white() {
+      from_piece.merge(to_piece)
+    } else {
+      from_piece
+    };
+    new_pieces[to.0 as usize] = new_piece;
+    
     // TODO: capture
 
     Self{
@@ -111,34 +134,45 @@ impl Board {
   }
 
   pub fn piece_at(&self, loc: i32) -> u8 {
-    self.pieces[loc as usize]
+    self.pieces[loc as usize].0
   }
 
-  fn is_white(piece: Piece) -> bool {
-    (piece & COLOR_MASK) == WHITE
-  }
+  // pub fn is_check(&self, white: bool) -> bool {
+  //   let king_loc = self.pieces.iter()
+  //     .enumerate()
+  //     .filter(|(_, &p)| p != 0)
+  //     .filter(|(_, &p)| (p & COLOR_MASK) == if white { WHITE } else { BLACK })
+  //     .filter(|(_, &p)| (p & COLOR_MASK) == if white { WHITE } else { BLACK })
+  //     .next().unwrap().0 as i32;
+
+  //   self.pieces.iter()
+  //     .enumerate()
+  //     .filter(|(_, &p)| p != 0)
+  //     .filter(|(_, &p)| (p & COLOR_MASK) == if !white { WHITE } else { BLACK })
+  //     .any(|(i, _)| self.moves_from(i).unwrap().iter().any(|&l| l == king_loc))
+  // }
 
   pub fn moves_from(&self, loc: i32) -> Option<Box<[i32]>> {
     let loc = Loc(loc);
     let piece = self.piece(loc);
 
-    if piece == 0 { return None };
+    if piece.is_empty() { return None };
 
     let mut dests = vec![];
 
-    if piece & PAWN != 0 {
-      let dy = if Self::is_white(piece) { -1 } else { 1 };
+    if piece.is_pawn() {
+      let dy = if piece.is_white() { -1 } else { 1 };
       
       // Forward movement
       if let Some(new_loc) = loc.d(0, dy) {
-        if self.piece(new_loc) == 0 {
+        if self.piece(new_loc).is_empty() {
           dests.push(new_loc);
 
           // Double move from starting position
-          let starting_row = if Self::is_white(piece) { 6 } else { 1 };
+          let starting_row = if piece.is_white() { 6 } else { 1 };
           if starting_row == loc.y() {
             if let Some(new_loc) = loc.d(0, dy * 2) {
-              if self.piece(new_loc) == 0 {
+              if self.piece(new_loc).is_empty() {
                 dests.push(new_loc);
               }
             }
@@ -149,13 +183,13 @@ impl Board {
       // Attack
       for &dx in &[-1, 1] {
         if let Some(new_loc) = loc.d(dx, dy) {
-          if self.piece(new_loc) != 0 {
+          if !self.piece(new_loc).is_empty() {
             dests.push(new_loc);
           }
         } 
       }
     }
-    if piece & ROOK != 0 {
+    if piece.is_rook() {
       let ds = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
       for &(dx, dy) in &ds {
@@ -165,14 +199,14 @@ impl Board {
           if let Some(new_loc) = loc.d(dx, dy) {
             loc = new_loc;
             dests.push(loc);
-            if self.piece(new_loc) != 0 { break; }                
+            if !self.piece(new_loc).is_empty() { break; }                
           } else {
             break
           }
         }
       }
     }
-    if piece & BISHOP != 0 {
+    if piece.is_bishop() {
       let ds = [(1, 1), (-1, 1), (1, -1), (-1, -1)];
 
       for &(dx, dy) in &ds {
@@ -182,14 +216,14 @@ impl Board {
           if let Some(new_loc) = loc.d(dx, dy) {
             loc = new_loc;
             dests.push(new_loc);
-            if self.piece(new_loc) != 0 { break; }                
+            if !self.piece(new_loc).is_empty() { break; }                
           } else {
             break
           }
         }
       }
     }
-    if piece & QUEEN != 0 {
+    if piece.is_queen() {
       let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
 
       for &(dx, dy) in &ds {
@@ -199,14 +233,14 @@ impl Board {
           if let Some(new_loc) = loc.d(dx, dy) {
             loc = new_loc;
             dests.push(loc);
-            if self.piece(new_loc) != 0 { break; }                
+            if !self.piece(new_loc).is_empty() { break; }                
           } else {
             break
           }
         }
       }
     }
-    if piece & KING != 0 {
+    if piece.is_king() {
       let ds = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
 
       for &(dx, dy) in &ds {
@@ -215,7 +249,7 @@ impl Board {
         }
       }
     }
-    if piece & KNIGHT != 0 {
+    if piece.is_knight() {
       let ds = [(1, 2), (2, 1),
                 (-1, 2), (2, -1),
                 (1, -2), (-2, 1),
