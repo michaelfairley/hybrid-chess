@@ -10,6 +10,8 @@ enum State {
     available_moves: Vec<Loc>,
     check_moves: Vec<Loc>,
   },
+  Checkmate(bool),
+  Stalemate(bool),
 }
 
 #[wasm_bindgen]
@@ -95,6 +97,14 @@ impl Interface {
         }
       }
     }
+
+    if let State::Checkmate(white) = self.state {
+      let c = if white { "White" } else { "Black" };
+      let m = format!("Checkmate! {} wins", c);
+      message.set_text_content(Some(&m));
+    } else if let State::Stalemate(_) = self.state {
+      message.set_text_content(Some("Stalemate!"));
+    }
   }
 
   pub fn clicked(&mut self, x: i32, y: i32) {
@@ -116,12 +126,21 @@ impl Interface {
       State::Selected{selected_loc, ref available_moves, ..} => {
         if available_moves.contains(&loc) {
           self.board = self.board.move_(selected_loc, loc);
-          self.white_turn = !self.white_turn;
-          Some(State::Playing)
+
+          if self.board.is_check_mate(!self.white_turn) {
+            Some(State::Checkmate(self.white_turn))
+          } else if self.board.is_stale_mate(!self.white_turn) {
+            Some(State::Stalemate(self.white_turn))
+          } else {
+            self.white_turn = !self.white_turn;
+            Some(State::Playing)
+          }
         } else if selected_loc == loc {
           Some(State::Playing)
         } else { None }
       },
+      State::Checkmate(_) => { None },
+      State::Stalemate(_) => { None },
     };
 
     if let Some(new_state) = new_state {

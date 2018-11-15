@@ -57,6 +57,22 @@ const COLOR_MASK: u8 = 0x80;
 struct Piece(u8);
 
 impl Piece {
+  const EMPTY: Piece = Piece(0);
+
+  const WHITE_KING:   Piece = Piece(WHITE | KING);
+  const WHITE_QUEEN:  Piece = Piece(WHITE | QUEEN);
+  const WHITE_ROOK:   Piece = Piece(WHITE | ROOK);
+  const WHITE_BISHOP: Piece = Piece(WHITE | BISHOP);
+  const WHITE_KNIGHT: Piece = Piece(WHITE | KNIGHT);
+  const WHITE_PAWN:   Piece = Piece(WHITE | PAWN);
+
+  const BLACK_KING:   Piece = Piece(BLACK | KING);
+  const BLACK_QUEEN:  Piece = Piece(BLACK | QUEEN);
+  const BLACK_ROOK:   Piece = Piece(BLACK | ROOK);
+  const BLACK_BISHOP: Piece = Piece(BLACK | BISHOP);
+  const BLACK_KNIGHT: Piece = Piece(BLACK | KNIGHT);
+  const BLACK_PAWN:   Piece = Piece(BLACK | PAWN);
+
   #[inline] pub fn empty() -> Self { Piece(0) }
 
   #[inline] pub fn is_empty(self) -> bool { self.0 == 0 }
@@ -84,28 +100,28 @@ impl Board {
   pub fn fresh() -> Self{
     Self{
       pieces: [
-        Piece(ROOK | BLACK),
-        Piece(KNIGHT | BLACK),
-        Piece(BISHOP | BLACK),
-        Piece(QUEEN | BLACK),
-        Piece(KING | BLACK),
-        Piece(BISHOP | BLACK),
-        Piece(KNIGHT | BLACK),
-        Piece(ROOK | BLACK),
-        Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK), Piece(PAWN | BLACK),
-        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
-        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
-        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
-        Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0), Piece(0),
-        Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE), Piece(PAWN | WHITE),
-        Piece(ROOK | WHITE),
-        Piece(KNIGHT | WHITE),
-        Piece(BISHOP | WHITE),
-        Piece(QUEEN | WHITE),
-        Piece(KING | WHITE),
-        Piece(BISHOP | WHITE),
-        Piece(KNIGHT | WHITE),
-        Piece(ROOK | WHITE),
+        Piece::BLACK_ROOK,
+        Piece::BLACK_KNIGHT,
+        Piece::BLACK_BISHOP,
+        Piece::BLACK_QUEEN,
+        Piece::BLACK_KING,
+        Piece::BLACK_BISHOP,
+        Piece::BLACK_KNIGHT,
+        Piece::BLACK_ROOK,
+        Piece::BLACK_PAWN, Piece::BLACK_PAWN, Piece::BLACK_PAWN, Piece::BLACK_PAWN, Piece::BLACK_PAWN, Piece::BLACK_PAWN, Piece::BLACK_PAWN, Piece::BLACK_PAWN,
+        Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY,
+        Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY,
+        Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY,
+        Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY, Piece::EMPTY,
+        Piece::WHITE_PAWN, Piece::WHITE_PAWN, Piece::WHITE_PAWN, Piece::WHITE_PAWN, Piece::WHITE_PAWN, Piece::WHITE_PAWN, Piece::WHITE_PAWN, Piece::WHITE_PAWN,
+        Piece::WHITE_ROOK,
+        Piece::WHITE_KNIGHT,
+        Piece::WHITE_BISHOP,
+        Piece::WHITE_QUEEN,
+        Piece::WHITE_KING,
+        Piece::WHITE_BISHOP,
+        Piece::WHITE_KNIGHT,
+        Piece::WHITE_ROOK,
       ]
     }
   }
@@ -146,7 +162,37 @@ impl Board {
       .enumerate()
       .filter(|(_, &p)| !p.is_empty())
       .filter(|(_, &p)| p.is_white() != white)
-      .any(|(i, _)| self.moves_from(Loc(i as i32)).unwrap().iter().any(|&l| l.0 == king_loc))
+      .any(|(i, _)| self.moves_from(Loc(i as i32)).unwrap().into_iter().any(|l| l.0 == king_loc))
+  }
+
+  pub fn is_check_mate(&self, white: bool) -> bool {
+    if !self.is_check(white) { return false }
+
+    self.pieces.iter()
+      .enumerate()
+      .filter(|(_, &p)| !p.is_empty())
+      .filter(|(_, &p)| p.is_white() == white)
+      .all(|(i, _)| {
+        let i = Loc(i as i32);
+        let moves = self.moves_from(i).unwrap();
+
+        moves.into_iter().all(|to| self.move_(i, to).is_check(white))
+      })
+  }
+
+  pub fn is_stale_mate(&self, white: bool) -> bool {
+    if self.is_check(white) { return false }
+
+    self.pieces.iter()
+      .enumerate()
+      .filter(|(_, &p)| !p.is_empty())
+      .filter(|(_, &p)| p.is_white() == white)
+      .all(|(i, _)| {
+        let i = Loc(i as i32);
+        let moves = self.moves_from(i).unwrap();
+
+        moves.into_iter().all(|to| self.move_(i, to).is_check(white))
+      })
   }
 
   pub fn moves_from(&self, loc: Loc) -> Option<Vec<Loc>> {
@@ -262,5 +308,56 @@ impl Board {
     dests.dedup();
 
     Some(dests)
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::{Board,Piece};
+
+  #[test]
+  pub fn check() {
+    let mut board = empty_board();
+
+    board.pieces[0 + 0*8] = Piece::BLACK_KING;
+    assert!(!board.is_check(false));
+
+    board.pieces[1 + 0*8] = Piece::WHITE_PAWN;
+    assert!(!board.is_check(false));
+
+    board.pieces[0 + 7*8] = Piece::WHITE_QUEEN;
+    assert!(board.is_check(false));
+  }
+
+  #[test]
+  pub fn check_mate() {
+    let mut board = empty_board();
+
+    board.pieces[0 + 0*8] = Piece::BLACK_KING;
+    assert!(!board.is_check_mate(false));
+
+    board.pieces[0 + 7*8] = Piece::WHITE_QUEEN;
+    assert!(!board.is_check_mate(false));
+
+    board.pieces[1 + 7*8] = Piece::WHITE_ROOK;
+    assert!(board.is_check_mate(false));
+  }
+
+  #[test]
+  pub fn stale_mate() {
+    let mut board = empty_board();
+
+    board.pieces[0 + 0*8] = Piece::BLACK_KING;
+    assert!(!board.is_stale_mate(false));
+
+    board.pieces[1 + 7*8] = Piece::WHITE_QUEEN;
+    assert!(!board.is_stale_mate(false));
+
+    board.pieces[7 + 1*8] = Piece::WHITE_ROOK;
+    assert!(board.is_stale_mate(false));
+  }
+
+  fn empty_board() -> Board {
+    Board{pieces: [Piece::EMPTY; 64]}
   }
 }
