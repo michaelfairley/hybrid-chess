@@ -120,14 +120,14 @@ impl Board {
     let from_piece = std::mem::replace(&mut new_pieces[from.0 as usize], Piece::empty());
     assert!(!from_piece.is_empty());
     let to_piece = self.pieces[to.0 as usize];
-    
+
     let new_piece = if from_piece.is_white() == to_piece.is_white() {
       from_piece.merge(to_piece)
     } else {
       from_piece
     };
     new_pieces[to.0 as usize] = new_piece;
-    
+
     // TODO: capture
 
     Self{
@@ -158,7 +158,7 @@ impl Board {
 
     if piece.is_pawn() {
       let dy = if piece.is_white() { -1 } else { 1 };
-      
+
       // Forward movement
       if let Some(new_loc) = loc.d(0, dy) {
         if self.piece(new_loc).is_empty() {
@@ -175,14 +175,14 @@ impl Board {
           }
         }
       }
-      
+
       // Attack
       for &dx in &[-1, 1] {
         if let Some(new_loc) = loc.d(dx, dy) {
           if !self.piece(new_loc).is_empty() {
             dests.push(new_loc);
           }
-        } 
+        }
       }
     }
     if piece.is_rook() {
@@ -195,7 +195,7 @@ impl Board {
           if let Some(new_loc) = loc.d(dx, dy) {
             loc = new_loc;
             dests.push(loc);
-            if !self.piece(new_loc).is_empty() { break; }                
+            if !self.piece(new_loc).is_empty() { break; }
           } else {
             break
           }
@@ -212,7 +212,7 @@ impl Board {
           if let Some(new_loc) = loc.d(dx, dy) {
             loc = new_loc;
             dests.push(new_loc);
-            if !self.piece(new_loc).is_empty() { break; }                
+            if !self.piece(new_loc).is_empty() { break; }
           } else {
             break
           }
@@ -229,7 +229,7 @@ impl Board {
           if let Some(new_loc) = loc.d(dx, dy) {
             loc = new_loc;
             dests.push(loc);
-            if !self.piece(new_loc).is_empty() { break; }                
+            if !self.piece(new_loc).is_empty() { break; }
           } else {
             break
           }
