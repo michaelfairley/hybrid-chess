@@ -16,6 +16,7 @@ enum State {
 pub struct Interface {
   state: State,
   board: Board,
+  white_turn: bool,
 }
 
 #[wasm_bindgen]
@@ -24,20 +25,24 @@ impl Interface {
     Interface{
       state: State::Playing,
       board: Board::fresh(),
+      white_turn: true,
     }
   }
-  
+
   pub fn render(&self) {
     ::utils::set_panic_hook();
-    
+
     let window = web_sys::window().expect("window");
     let document = window.document().expect("document");
+
+    let message = document.get_element_by_id("message").expect("#message");
+    message.set_text_content(None);
 
     let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
 
     for y in 0..8 {
       let tr = table.children().get_with_index(y).expect("tr");
-      
+
       for x in 0..8 {
         let td = tr.children().get_with_index(x).expect("td");
 
@@ -69,7 +74,7 @@ impl Interface {
         let mut images = vec![];
         let color = if piece.is_white() { "white" } else { "black" };
         let image_url = |piece| { format!("url('images/{}_{}.svg')", color, piece) };
-        
+
         if piece.is_king() { images.push(image_url("king")) };
         if piece.is_queen() { images.push(image_url("queen")) };
         if piece.is_rook() { images.push(image_url("rook")) };
@@ -85,6 +90,7 @@ impl Interface {
         }
 
         if piece.is_king() && self.board.is_check(piece.is_white()) {
+          message.set_text_content(Some("Check!"));
           td.class_list().add_1("check").unwrap();
         }
       }
@@ -97,17 +103,20 @@ impl Interface {
     let new_state = match self.state {
       State::Playing => {
         let piece = self.board.piece(loc);
-        let available_moves = self.board.moves_from(loc);
 
+        if piece.is_white() == self.white_turn {
+          let available_moves = self.board.moves_from(loc);
 
-        if let Some(available_moves) = available_moves {
-          let (check_moves, available_moves) = available_moves.into_iter().partition(|&to| self.board.move_(loc, to).is_check(piece.is_white()));
-          Some(State::Selected{selected_loc: loc, available_moves, check_moves})
+          if let Some(available_moves) = available_moves {
+            let (check_moves, available_moves) = available_moves.into_iter().partition(|&to| self.board.move_(loc, to).is_check(piece.is_white()));
+            Some(State::Selected{selected_loc: loc, available_moves, check_moves})
+          } else { None }
         } else { None }
       },
       State::Selected{selected_loc, ref available_moves, ..} => {
         if available_moves.contains(&loc) {
           self.board = self.board.move_(selected_loc, loc);
+          self.white_turn = !self.white_turn;
           Some(State::Playing)
         } else if selected_loc == loc {
           Some(State::Playing)

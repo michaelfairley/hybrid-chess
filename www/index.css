@@ -57,3 +57,9 @@ td.check.black {
 td.check.white {
   background-color: #dd0000;
 }
+
+#message {
+  margin: 0 auto;
+  text-align: center;
+  font-size: 2.5rem;
+}
