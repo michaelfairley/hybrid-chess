@@ -22,7 +22,7 @@ cfg_if! {
 }
 
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Loc(i32);
 
 impl Loc {
@@ -257,6 +257,9 @@ impl Board {
         }
       }
     }
+
+    dests.sort();
+    dests.dedup();
 
     Some(dests)
   }

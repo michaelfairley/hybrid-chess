@@ -5,7 +5,11 @@ use super::{Board,Loc};
 
 enum State {
   Playing,
-  Selected(Loc, Vec<Loc>),
+  Selected {
+    selected_loc: Loc,
+    available_moves: Vec<Loc>,
+    check_moves: Vec<Loc>,
+  },
 }
 
 #[wasm_bindgen]
@@ -42,11 +46,13 @@ impl Interface {
         let cell_color = if ((x + y) % 2) == 0 { "white" } else { "black" };
         td.set_class_name(cell_color);
 
-        if let State::Selected(selected_loc, ref available_moves) = self.state {
+        if let State::Selected{selected_loc, ref available_moves, ref check_moves} = self.state {
           if loc == selected_loc {
             td.class_list().add_1("selected").unwrap();
           } else if available_moves.contains(&loc) {
             td.class_list().add_1("available-move").unwrap();
+          } else if check_moves.contains(&loc) {
+            td.class_list().add_1("check-move").unwrap();
           }
         }
 
@@ -90,13 +96,16 @@ impl Interface {
 
     let new_state = match self.state {
       State::Playing => {
+        let piece = self.board.piece(loc);
         let available_moves = self.board.moves_from(loc);
 
+
         if let Some(available_moves) = available_moves {
-          Some(State::Selected(loc, available_moves))
+          let (check_moves, available_moves) = available_moves.into_iter().partition(|&to| self.board.move_(loc, to).is_check(piece.is_white()));
+          Some(State::Selected{selected_loc: loc, available_moves, check_moves})
         } else { None }
       },
-      State::Selected(selected_loc, ref available_moves) => {
+      State::Selected{selected_loc, ref available_moves, ..} => {
         if available_moves.contains(&loc) {
           self.board = self.board.move_(selected_loc, loc);
           Some(State::Playing)
@@ -113,7 +122,7 @@ impl Interface {
   }
 
   pub fn clicked_out(&mut self) {
-    if matches!(self.state, State::Selected(_, _)) {
+    if matches!(self.state, State::Selected{..}) {
       self.state = State::Playing;
       self.render();
     }
