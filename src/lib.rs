@@ -3,8 +3,10 @@ extern crate wasm_bindgen;
 extern crate web_sys;
 #[macro_use]
 extern crate matches;
+extern crate rand;
 
 mod utils;
+mod ai;
 pub mod interface;
 
 pub use interface::Interface;

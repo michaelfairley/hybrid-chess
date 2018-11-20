@@ -15,6 +15,7 @@ wasm-bindgen = "*"
 console_error_panic_hook = { version = "*", optional = true }
 wee_alloc = { version = "*", optional = true }
 matches = "*"
+rand = { version = "*", features = ["wasm-bindgen"] }
 
 [dependencies.web-sys]
 version = "*"

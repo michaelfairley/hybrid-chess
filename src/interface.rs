@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 use super::{Board,Loc};
+use super::ai;
 
 enum State {
   Playing,
@@ -127,13 +128,22 @@ impl Interface {
         if available_moves.contains(&loc) {
           self.board = self.board.move_(selected_loc, loc);
 
-          if self.board.is_check_mate(!self.white_turn) {
-            Some(State::Checkmate(self.white_turn))
-          } else if self.board.is_stale_mate(!self.white_turn) {
-            Some(State::Stalemate(self.white_turn))
+          let new_state = self.mate_state();
+          if !matches!(new_state, State::Playing) {
+            Some(new_state)
           } else {
             self.white_turn = !self.white_turn;
-            Some(State::Playing)
+
+            let ai_move = ai::choose_move(&self.board, self.white_turn);
+            self.board = self.board.move_(ai_move.0, ai_move.1);
+
+            let new_state = self.mate_state();
+            if !matches!(new_state, State::Playing) {
+              Some(new_state)
+            } else {
+              self.white_turn = !self.white_turn;
+              Some(State::Playing)
+            }
           }
         } else if selected_loc == loc {
           Some(State::Playing)
@@ -146,6 +156,16 @@ impl Interface {
     if let Some(new_state) = new_state {
       self.state = new_state;
       self.render();
+    }
+  }
+
+  fn mate_state(&self) -> State {
+    if self.board.is_check_mate(!self.white_turn) {
+      State::Checkmate(self.white_turn)
+    } else if self.board.is_stale_mate(!self.white_turn) {
+      State::Stalemate(self.white_turn)
+    } else {
+      State::Playing
     }
   }
 
