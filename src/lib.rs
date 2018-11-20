@@ -155,25 +155,26 @@ impl Board {
     self.pieces[loc as usize].0
   }
 
-  pub fn is_check(&self, white: bool) -> bool {
-    let king_loc = self.pieces.iter().position(|p| p.is_king() && (p.is_white() == white)).expect("There should be a king") as i32;
-
+  pub fn pieces<'a>(&'a self, white: bool) -> impl Iterator<Item=(Loc,Piece)> + 'a {
     self.pieces.iter()
       .enumerate()
       .filter(|(_, &p)| !p.is_empty())
-      .filter(|(_, &p)| p.is_white() != white)
-      .any(|(i, _)| self.moves_from(Loc(i as i32)).unwrap().into_iter().any(|l| l.0 == king_loc))
+      .filter(move |(_, &p)| p.is_white() == white)
+      .map(|(i, &p)| (Loc(i as i32), p))
+  }
+
+  pub fn is_check(&self, white: bool) -> bool {
+    let king_loc = self.pieces.iter().position(|p| p.is_king() && (p.is_white() == white)).expect("There should be a king") as i32;
+
+    self.pieces(!white)
+      .any(|(i, _)| self.moves_from(i).unwrap().into_iter().any(|l| l.0 == king_loc))
   }
 
   pub fn is_check_mate(&self, white: bool) -> bool {
     if !self.is_check(white) { return false }
 
-    self.pieces.iter()
-      .enumerate()
-      .filter(|(_, &p)| !p.is_empty())
-      .filter(|(_, &p)| p.is_white() == white)
+    self.pieces(white)
       .all(|(i, _)| {
-        let i = Loc(i as i32);
         let moves = self.moves_from(i).unwrap();
 
         moves.into_iter().all(|to| self.move_(i, to).is_check(white))
@@ -183,12 +184,8 @@ impl Board {
   pub fn is_stale_mate(&self, white: bool) -> bool {
     if self.is_check(white) { return false }
 
-    self.pieces.iter()
-      .enumerate()
-      .filter(|(_, &p)| !p.is_empty())
-      .filter(|(_, &p)| p.is_white() == white)
+    self.pieces(white)
       .all(|(i, _)| {
-        let i = Loc(i as i32);
         let moves = self.moves_from(i).unwrap();
 
         moves.into_iter().all(|to| self.move_(i, to).is_check(white))
