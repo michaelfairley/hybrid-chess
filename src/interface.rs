@@ -134,7 +134,7 @@ impl Interface {
           } else {
             self.white_turn = !self.white_turn;
 
-            let ai_move = ai::choose_move(&self.board, self.white_turn);
+            let ai_move = ai::choose_minimax(&self.board, self.white_turn);
             self.board = self.board.move_(ai_move.0, ai_move.1);
 
             let new_state = self.mate_state();
