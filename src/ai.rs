@@ -96,6 +96,10 @@ fn score_piece(piece: Piece) -> i32 {
   if piece.is_bishop() { res += 50; }
   if piece.is_pawn() { res += 20; }
 
+  if piece.is_queen() && piece.is_rook() { res -= 20 };
+  if piece.is_queen() && piece.is_bishop() { res -= 20 };
+  if piece.is_queen() && piece.is_pawn() { res -= 10 };
+
   res
 }
 
