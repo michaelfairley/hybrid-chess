@@ -10,7 +10,7 @@ pub fn choose_minimax(start: &Board, white: bool) -> (Loc, Loc) {
               .map(move |m| (i, m)))
     .map(|(from, to)| ((from, to), start.move_(from, to)))
     .filter(|&(_move_, ref board)| !board.is_check(white))
-    .map(|(move_, board)| (move_, minimax(&board, 2, false, white)))
+    .map(|(move_, board)| (move_, minimax(&board, 3, std::i32::MIN, std::i32::MAX, false, white)))
     .collect::<Vec<_>>();
 
   let max = scored_moves.iter().map(|&(_move_, score)| score).max().expect("No moves available");
@@ -21,12 +21,12 @@ pub fn choose_minimax(start: &Board, white: bool) -> (Loc, Loc) {
     .choose(&mut rand::thread_rng()).expect("No moves available")
 }
 
-fn minimax(start: &Board, depth: usize, maximizing_player: bool, ai_white: bool) -> i32 {
+fn minimax(start: &Board, depth: usize, mut alpha: i32, mut beta: i32, maximizing_player: bool, ai_white: bool) -> i32 {
   if depth == 0 { return score_board(start, ai_white); }
 
   let white = !ai_white ^ maximizing_player;
 
-  if start.is_check_mate(white) { return if maximizing_player { -10000 } else { 10000 }; }
+  if start.is_check_mate(white) { return if maximizing_player { std::i32::MIN } else { std::i32::MAX }; }
   if start.is_stale_mate(white) { return 0; }
 
   let children = start.pieces(white)
@@ -36,13 +36,29 @@ fn minimax(start: &Board, depth: usize, maximizing_player: bool, ai_white: bool)
     .map(|(from, to)| start.move_(from, to))
     .filter(|board| !board.is_check(white));
 
-  let scores = children
-    .map(|board| minimax(&board, depth - 1, !maximizing_player, ai_white));
+  // let scores = children
+  //   .map(|board| minimax(&board, depth - 1, !maximizing_player, ai_white));
 
   if maximizing_player {
-    scores.max().expect("No moves")
+    let mut value = std::i32::MIN;
+    for board in children {
+      value = value.max(minimax(&board, depth - 1, alpha, beta, !maximizing_player, ai_white));
+      alpha = alpha.max(value);
+      if alpha >= beta { break; }
+    }
+    value
+
+    // scores.max().expect("No moves")
   } else {
-    scores.min().expect("No moves")
+    let mut value = std::i32::MAX;
+    for board in children {
+      value = value.min(minimax(&board, depth - 1, alpha, beta, !maximizing_player, ai_white));
+      beta = beta.min(value);
+      if alpha >= beta { break; }
+    }
+    value
+
+    // scores.min().expect("No moves")
   }
 }
 
