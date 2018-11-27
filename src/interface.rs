@@ -4,6 +4,7 @@ use wasm_bindgen::JsCast;
 use super::{Board,Loc};
 use super::ai;
 
+#[derive(Clone)]
 enum State {
   Playing,
   Selected {
@@ -108,10 +109,15 @@ impl Interface {
     }
   }
 
+  fn set_state(&mut self, new_state: State) {
+    self.state = new_state;
+    self.render();
+  }
+
   pub fn clicked(&mut self, x: i32, y: i32) {
     let loc = Loc(y * 8 + x);
 
-    let new_state = match self.state {
+    match self.state.clone() {
       State::Playing => {
         let piece = self.board.piece(loc);
 
@@ -120,52 +126,46 @@ impl Interface {
 
           if let Some(available_moves) = available_moves {
             let (check_moves, available_moves) = available_moves.into_iter().partition(|&to| self.board.move_(loc, to).is_check(piece.is_white()));
-            Some(State::Selected{selected_loc: loc, available_moves, check_moves})
-          } else { None }
-        } else { None }
+            self.set_state(State::Selected{selected_loc: loc, available_moves, check_moves});
+          }
+        }
       },
       State::Selected{selected_loc, ref available_moves, ..} => {
         if available_moves.contains(&loc) {
           self.board = self.board.move_(selected_loc, loc);
 
-          let new_state = self.mate_state();
-          if !matches!(new_state, State::Playing) {
-            Some(new_state)
+          if let Some(mate_state) = self.mate_state() {
+            self.set_state(mate_state);
           } else {
             self.white_turn = !self.white_turn;
+            // self.render(); // TODO: figured out why this doesn't work (don't yield control back to browser to paint?)
 
             let ai_move = ai::choose_minimax(&self.board, self.white_turn);
             self.board = self.board.move_(ai_move.0, ai_move.1);
 
-            let new_state = self.mate_state();
-            if !matches!(new_state, State::Playing) {
-              Some(new_state)
+            if let Some(mate_state) = self.mate_state() {
+              self.set_state(mate_state);
             } else {
               self.white_turn = !self.white_turn;
-              Some(State::Playing)
+              self.set_state(State::Playing);
             }
           }
         } else if selected_loc == loc {
-          Some(State::Playing)
-        } else { None }
+          self.set_state(State::Playing);
+        }
       },
-      State::Checkmate(_) => { None },
-      State::Stalemate(_) => { None },
+      State::Checkmate(_) => {},
+      State::Stalemate(_) => {},
     };
-
-    if let Some(new_state) = new_state {
-      self.state = new_state;
-      self.render();
-    }
   }
 
-  fn mate_state(&self) -> State {
+  fn mate_state(&self) -> Option<State> {
     if self.board.is_check_mate(!self.white_turn) {
-      State::Checkmate(self.white_turn)
+      Some(State::Checkmate(self.white_turn))
     } else if self.board.is_stale_mate(!self.white_turn) {
-      State::Stalemate(self.white_turn)
+      Some(State::Stalemate(self.white_turn))
     } else {
-      State::Playing
+      None
     }
   }
 
