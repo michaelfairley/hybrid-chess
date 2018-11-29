@@ -29,6 +29,8 @@ features = [
   "Node",
   "Window",
   "console",
+  "EventTarget",
+  "Event",
 ]
 
 [dev-dependencies]

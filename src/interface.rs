@@ -4,6 +4,8 @@ use wasm_bindgen::JsCast;
 use super::{Board,Loc};
 use super::ai;
 
+static mut THE_INTERFACE: Option<Interface> = None;
+
 #[derive(Clone)]
 enum State {
   Playing,
@@ -14,16 +16,15 @@ enum State {
   },
   Checkmate(bool),
   Stalemate(bool),
+  AiMove,
 }
 
-#[wasm_bindgen]
 pub struct Interface {
   state: State,
   board: Board,
   white_turn: bool,
 }
 
-#[wasm_bindgen]
 impl Interface {
   pub fn new() -> Self {
     Interface{
@@ -106,12 +107,26 @@ impl Interface {
       message.set_text_content(Some(&m));
     } else if let State::Stalemate(_) = self.state {
       message.set_text_content(Some("Stalemate!"));
+    } else if let State::AiMove = self.state {
+      message.set_text_content(Some("AI is thinking..."));
     }
   }
 
   fn set_state(&mut self, new_state: State) {
     self.state = new_state;
     self.render();
+  }
+
+  pub fn do_ai_move(&mut self) {
+    let ai_move = ai::choose_minimax(&self.board, self.white_turn);
+    self.board = self.board.move_(ai_move.0, ai_move.1);
+
+    if let Some(mate_state) = self.mate_state() {
+      self.set_state(mate_state);
+    } else {
+      self.white_turn = !self.white_turn;
+      self.set_state(State::Playing);
+    }
   }
 
   pub fn clicked(&mut self, x: i32, y: i32) {
@@ -138,17 +153,12 @@ impl Interface {
             self.set_state(mate_state);
           } else {
             self.white_turn = !self.white_turn;
-            // self.render(); // TODO: figured out why this doesn't work (don't yield control back to browser to paint?)
+            self.set_state(State::AiMove);
 
-            let ai_move = ai::choose_minimax(&self.board, self.white_turn);
-            self.board = self.board.move_(ai_move.0, ai_move.1);
-
-            if let Some(mate_state) = self.mate_state() {
-              self.set_state(mate_state);
-            } else {
-              self.white_turn = !self.white_turn;
-              self.set_state(State::Playing);
-            }
+            let window = web_sys::window().expect("window");
+            let clo = Closure::wrap(Box::new(move ||{ the_interface().do_ai_move(); }) as Box<Fn()>);
+            window.set_timeout_with_callback(clo.as_ref().unchecked_ref()).unwrap();
+            clo.forget(); // TODO: reuse this closure instead of leaking
           }
         } else if selected_loc == loc {
           self.set_state(State::Playing);
@@ -156,6 +166,7 @@ impl Interface {
       },
       State::Checkmate(_) => {},
       State::Stalemate(_) => {},
+      State::AiMove => {},
     };
   }
 
@@ -175,4 +186,41 @@ impl Interface {
       self.render();
     }
   }
+}
+
+pub fn the_interface() -> &'static mut Interface {
+  unsafe{ THE_INTERFACE.as_mut().unwrap() }
+}
+
+#[wasm_bindgen]
+pub fn init() {
+  unsafe{ THE_INTERFACE = Some(Interface::new()); }
+
+  let window = web_sys::window().expect("window");
+  let document = window.document().expect("document");
+
+  let clicked_out_callback = Closure::wrap(Box::new(move ||{ the_interface().clicked_out(); }) as Box<Fn()>);
+  window.add_event_listener_with_callback("click", clicked_out_callback.as_ref().unchecked_ref()).unwrap();
+  clicked_out_callback.forget();
+
+  let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
+  let clicked_callback = Closure::wrap(Box::new(move |event: web_sys::Event|{
+    let td = event.target().unwrap();
+    let td = td.dyn_into::<web_sys::HtmlElement>().unwrap();
+    let tr = td.parent_element().unwrap();
+
+    let table_children = table.children();
+    let y = (0..table_children.length()).map(|i| table_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&tr))).expect("y");
+    let tr_children = tr.children();
+    let x = (0..tr_children.length()).map(|i| tr_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&td))).expect("x");
+
+    the_interface().clicked(x as i32, y as i32);
+
+    event.stop_propagation();
+  }) as Box<Fn(web_sys::Event)>);
+  let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
+  table.add_event_listener_with_callback("click", clicked_callback.as_ref().unchecked_ref()).unwrap();
+  clicked_callback.forget();
+
+  the_interface().render();
 }
