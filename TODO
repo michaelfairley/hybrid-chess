@@ -1,14 +1,15 @@
+must have by sat:
 choose side
-ai
-ai vs ai
+better html sizing
+mobile
+release build
+reset
+some text
 
-animation (or just show ai move)
+
+nice to have:
+ai vs ai
 rewind through turns + threefold stalemate
 show captured pieces
 drag and drop
-
-better html sizing
-mobile
-
-release build
 ci
