@@ -236,7 +236,7 @@ pub fn the_interface() -> &'static mut Interface {
 
 #[wasm_bindgen]
 pub fn init() {
-  ::utils::set_panic_hook();
+  ::set_panic_hook();
 
   unsafe{ THE_INTERFACE = Some(Interface::setup()); }
 

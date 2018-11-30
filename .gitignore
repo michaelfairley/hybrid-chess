@@ -1,4 +1,6 @@
-/target
-/wasm-pack.log
-/bin
-/pkg
+/crate/target
+/crate/bin
+/crate/pkg
+/crate/wasm-pack.log
+/dist
+/node_modules
