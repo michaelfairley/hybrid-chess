@@ -8,6 +8,7 @@ static mut THE_INTERFACE: Option<Interface> = None;
 
 #[derive(Clone)]
 enum State {
+  Setup,
   Playing,
   Selected {
     selected_loc: Loc,
@@ -24,21 +25,34 @@ pub struct Interface {
   board: Board,
   white_turn: bool,
   prev_move: Option<(Loc, Loc)>,
+  white_ai: bool,
+  black_ai: bool,
 }
 
 impl Interface {
-  pub fn new() -> Self {
+  pub fn setup() -> Self {
     Interface{
-      state: State::Playing,
+      state: State::Setup,
+      board: Board::empty(),
+      white_turn: true,
+      prev_move: None,
+      white_ai: false,
+      black_ai: false,
+    }
+  }
+
+  pub fn new(white_ai: bool, black_ai: bool) -> Self {
+    Interface{
+      state: if white_ai { State::AiMove } else { State::Playing },
       board: Board::fresh(),
       white_turn: true,
       prev_move: None,
+      white_ai,
+      black_ai,
     }
   }
 
   pub fn render(&self) {
-    ::utils::set_panic_hook();
-
     let window = web_sys::window().expect("window");
     let document = window.document().expect("document");
 
@@ -118,6 +132,10 @@ impl Interface {
     } else if let State::AiMove = self.state {
       message.set_text_content(Some("AI is thinking..."));
     }
+
+    let setup = document.get_element_by_id("setup").expect("#setup");
+    let setup_class = if matches!(self.state, State::Setup) { "" } else { "hidden" };
+    setup.set_class_name(setup_class);
   }
 
   fn set_state(&mut self, new_state: State) {
@@ -126,15 +144,27 @@ impl Interface {
   }
 
   pub fn do_ai_move(&mut self) {
+    assert!(matches!(self.state, State::AiMove));
+
     let ai_move = ai::choose_minimax(&self.board, self.white_turn);
     self.board = self.board.move_(ai_move.0, ai_move.1);
     self.prev_move = Some(ai_move);
 
+    self.post_move();
+  }
+
+  fn post_move(&mut self) {
     if let Some(mate_state) = self.mate_state() {
       self.set_state(mate_state);
     } else {
       self.white_turn = !self.white_turn;
-      self.set_state(State::Playing);
+
+      if (self.white_turn && self.white_ai) || (!self.white_turn && self.black_ai) {
+        self.set_state(State::AiMove);
+        Self::schedule_ai_move();
+      } else {
+        self.set_state(State::Playing);
+      }
     }
   }
 
@@ -159,17 +189,7 @@ impl Interface {
           self.board = self.board.move_(selected_loc, loc);
           self.prev_move = Some((selected_loc, loc));
 
-          if let Some(mate_state) = self.mate_state() {
-            self.set_state(mate_state);
-          } else {
-            self.white_turn = !self.white_turn;
-            self.set_state(State::AiMove);
-
-            let window = web_sys::window().expect("window");
-            let clo = Closure::wrap(Box::new(move ||{ the_interface().do_ai_move(); }) as Box<Fn()>);
-            window.set_timeout_with_callback(clo.as_ref().unchecked_ref()).unwrap();
-            clo.forget(); // TODO: reuse this closure instead of leaking
-          }
+          self.post_move();
         } else if selected_loc == loc {
           self.set_state(State::Playing);
         }
@@ -177,7 +197,19 @@ impl Interface {
       State::Checkmate(_) => {},
       State::Stalemate(_) => {},
       State::AiMove => {},
+      State::Setup => {},
     };
+  }
+
+  fn schedule_ai_move() {
+    static mut CALLBACK: Option<wasm_bindgen::prelude::Closure<dyn std::ops::Fn()>> = None;
+
+    let callback = unsafe{
+      CALLBACK.get_or_insert_with(|| Closure::wrap(Box::new(move ||{ the_interface().do_ai_move(); }) as Box<Fn()>))
+    };
+
+    let window = web_sys::window().expect("window");
+    window.set_timeout_with_callback(callback.as_ref().unchecked_ref()).unwrap();
   }
 
   fn mate_state(&self) -> Option<State> {
@@ -204,33 +236,59 @@ pub fn the_interface() -> &'static mut Interface {
 
 #[wasm_bindgen]
 pub fn init() {
-  unsafe{ THE_INTERFACE = Some(Interface::new()); }
+  ::utils::set_panic_hook();
+
+  unsafe{ THE_INTERFACE = Some(Interface::setup()); }
 
   let window = web_sys::window().expect("window");
   let document = window.document().expect("document");
 
-  let clicked_out_callback = Closure::wrap(Box::new(move ||{ the_interface().clicked_out(); }) as Box<Fn()>);
-  window.add_event_listener_with_callback("click", clicked_out_callback.as_ref().unchecked_ref()).unwrap();
-  clicked_out_callback.forget();
+  {
+    let clicked_out_callback = Closure::wrap(Box::new(move ||{ the_interface().clicked_out(); }) as Box<Fn()>);
+    window.add_event_listener_with_callback("click", clicked_out_callback.as_ref().unchecked_ref()).unwrap();
+    clicked_out_callback.forget();
+  }
 
-  let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
-  let clicked_callback = Closure::wrap(Box::new(move |event: web_sys::Event|{
-    let td = event.target().unwrap();
-    let td = td.dyn_into::<web_sys::HtmlElement>().unwrap();
-    let tr = td.parent_element().unwrap();
+  {
+    let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
+    let clicked_callback = Closure::wrap(Box::new(move |event: web_sys::Event|{
+      let td = event.target().unwrap();
+      let td = td.dyn_into::<web_sys::HtmlElement>().unwrap();
+      let tr = td.parent_element().unwrap();
 
-    let table_children = table.children();
-    let y = (0..table_children.length()).map(|i| table_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&tr))).expect("y");
-    let tr_children = tr.children();
-    let x = (0..tr_children.length()).map(|i| tr_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&td))).expect("x");
+      let table_children = table.children();
+      let y = (0..table_children.length()).map(|i| table_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&tr))).expect("y");
+      let tr_children = tr.children();
+      let x = (0..tr_children.length()).map(|i| tr_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&td))).expect("x");
 
-    the_interface().clicked(x as i32, y as i32);
+      the_interface().clicked(x as i32, y as i32);
 
-    event.stop_propagation();
-  }) as Box<Fn(web_sys::Event)>);
-  let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
-  table.add_event_listener_with_callback("click", clicked_callback.as_ref().unchecked_ref()).unwrap();
-  clicked_callback.forget();
+      event.stop_propagation();
+    }) as Box<Fn(web_sys::Event)>);
+    let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
+    table.add_event_listener_with_callback("click", clicked_callback.as_ref().unchecked_ref()).unwrap();
+    clicked_callback.forget();
+  }
+
+  fn start_new_game(white_ai: bool, black_ai: bool) {
+    unsafe{ THE_INTERFACE = Some(Interface::new(white_ai, black_ai)); }
+    the_interface().render();
+    if white_ai { Interface::schedule_ai_move(); }
+  }
+
+  let modes = [
+    ("play-as-white", false, true),
+    ("play-as-black", true, false),
+    ("human-vs-human", false, false),
+    ("ai-vs-ai", true, true),
+  ];
+
+  for &(button_id, white_ai, black_ai) in &modes {
+    let button = document.get_element_by_id(button_id).expect(button_id);
+    let callback = Closure::wrap(Box::new(move || start_new_game(white_ai, black_ai)) as Box<Fn()>);
+    button.add_event_listener_with_callback("click", callback.as_ref().unchecked_ref()).unwrap();
+    callback.forget();
+  }
 
   the_interface().render();
 }

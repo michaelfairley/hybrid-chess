@@ -99,7 +99,7 @@ pub struct Board {
 
 // #[wasm_bindgen]
 impl Board {
-  pub fn fresh() -> Self{
+  pub fn fresh() -> Self {
     Self{
       pieces: [
         Piece::BLACK_ROOK,
@@ -126,6 +126,10 @@ impl Board {
         Piece::WHITE_ROOK,
       ]
     }
+  }
+
+  pub fn empty() -> Self {
+    Self{ pieces: [Piece::EMPTY; 64] }
   }
 
   fn piece(&self, loc: Loc) -> Piece {

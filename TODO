@@ -1,5 +1,4 @@
 must have by sat:
-choose side
 better html sizing
 mobile
 release build
@@ -8,8 +7,8 @@ some text
 
 
 nice to have:
-ai vs ai
 rewind through turns + threefold stalemate
 show captured pieces
 drag and drop
 ci
+optimize ai in ai vs ai tourny

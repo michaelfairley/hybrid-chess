@@ -72,3 +72,15 @@ td.check.white {
   text-align: center;
   font-size: 2.5rem;
 }
+
+#container {
+  text-align: center;
+}
+
+button {
+  font-size: 120%;
+}
+
+.hidden {
+  display: none;
+}
