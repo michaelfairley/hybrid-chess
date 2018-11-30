@@ -2,13 +2,15 @@ table {
   border-spacing: 0px;
   border: 1px black solid;
   margin: 0 auto;
+  max-width: 700px;
+  width: 100%;
 }
 
 td {
-  width: 70px;
-  height: 70px;
+  width: 12.5%;
+  height: 0px;
   margin: 0;
-  padding: 0;
+  padding: 0 0 12.5% 0;
   background-size: 100% auto;
   background-repeat: no-repeat;
   background-position: center center, top left, top right, bottom left, bottom right;

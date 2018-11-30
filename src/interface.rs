@@ -272,8 +272,8 @@ pub fn init() {
 
   fn start_new_game(white_ai: bool, black_ai: bool) {
     unsafe{ THE_INTERFACE = Some(Interface::new(white_ai, black_ai)); }
-    the_interface().render();
     if white_ai { Interface::schedule_ai_move(); }
+    the_interface().render();
   }
 
   let modes = [
