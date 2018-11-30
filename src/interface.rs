@@ -23,6 +23,7 @@ pub struct Interface {
   state: State,
   board: Board,
   white_turn: bool,
+  prev_move: Option<(Loc, Loc)>,
 }
 
 impl Interface {
@@ -31,6 +32,7 @@ impl Interface {
       state: State::Playing,
       board: Board::fresh(),
       white_turn: true,
+      prev_move: None,
     }
   }
 
@@ -55,6 +57,12 @@ impl Interface {
 
         let cell_color = if ((x + y) % 2) == 0 { "white" } else { "black" };
         td.set_class_name(cell_color);
+
+        if let Some((from, to)) = self.prev_move {
+          if from == loc || to == loc {
+            td.class_list().add_1("prev-move").unwrap();
+          }
+        }
 
         if let State::Selected{selected_loc, ref available_moves, ref check_moves} = self.state {
           if loc == selected_loc {
@@ -120,6 +128,7 @@ impl Interface {
   pub fn do_ai_move(&mut self) {
     let ai_move = ai::choose_minimax(&self.board, self.white_turn);
     self.board = self.board.move_(ai_move.0, ai_move.1);
+    self.prev_move = Some(ai_move);
 
     if let Some(mate_state) = self.mate_state() {
       self.set_state(mate_state);
@@ -148,6 +157,7 @@ impl Interface {
       State::Selected{selected_loc, ref available_moves, ..} => {
         if available_moves.contains(&loc) {
           self.board = self.board.move_(selected_loc, loc);
+          self.prev_move = Some((selected_loc, loc));
 
           if let Some(mate_state) = self.mate_state() {
             self.set_state(mate_state);

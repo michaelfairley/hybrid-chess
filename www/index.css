@@ -26,6 +26,14 @@ td.black {
   background-color: #808080;
 }
 
+td.prev-move.black {
+  background-color: #aabbff;
+}
+
+td.prev-move.white {
+  background-color: #bbccff;
+}
+
 td.selected.black {
   background-color: #c0c000;
 }
@@ -57,6 +65,7 @@ td.check.black {
 td.check.white {
   background-color: #dd0000;
 }
+
 
 #message {
   margin: 0 auto;
