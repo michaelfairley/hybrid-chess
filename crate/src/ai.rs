@@ -36,9 +36,6 @@ fn minimax(start: &Board, depth: usize, mut alpha: i32, mut beta: i32, maximizin
     .map(|(from, to)| start.move_(from, to))
     .filter(|board| !board.is_check(white));
 
-  // let scores = children
-  //   .map(|board| minimax(&board, depth - 1, !maximizing_player, ai_white));
-
   if maximizing_player {
     let mut value = std::i32::MIN;
     for board in children {
@@ -47,8 +44,6 @@ fn minimax(start: &Board, depth: usize, mut alpha: i32, mut beta: i32, maximizin
       if alpha >= beta { break; }
     }
     value
-
-    // scores.max().expect("No moves")
   } else {
     let mut value = std::i32::MAX;
     for board in children {
@@ -57,8 +52,6 @@ fn minimax(start: &Board, depth: usize, mut alpha: i32, mut beta: i32, maximizin
       if alpha >= beta { break; }
     }
     value
-
-    // scores.min().expect("No moves")
   }
 }
 
