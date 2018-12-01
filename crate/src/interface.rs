@@ -251,23 +251,21 @@ pub fn init() {
 
   {
     let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
-    let clicked_callback = Closure::wrap(Box::new(move |event: web_sys::Event|{
-      let td = event.target().unwrap();
-      let td = td.dyn_into::<web_sys::HtmlElement>().unwrap();
-      let tr = td.parent_element().unwrap();
 
-      let table_children = table.children();
-      let y = (0..table_children.length()).map(|i| table_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&tr))).expect("y");
-      let tr_children = tr.children();
-      let x = (0..tr_children.length()).map(|i| tr_children.get_with_index(i).unwrap()).position(|e| e.is_same_node(Some(&td))).expect("x");
+    for y in 0..8 {
+      let tr = table.children().get_with_index(y).expect("tr");
 
-      the_interface().clicked(x as i32, y as i32);
+      for x in 0..8 {
+        let td = tr.children().get_with_index(x).expect("td");
 
-      event.stop_propagation();
-    }) as Box<Fn(web_sys::Event)>);
-    let table = document.get_element_by_id("chess-board").expect("#chess-board").first_element_child().expect("tbody");
-    table.add_event_listener_with_callback("click", clicked_callback.as_ref().unchecked_ref()).unwrap();
-    clicked_callback.forget();
+        let clicked_callback = Closure::wrap(Box::new(move |event: web_sys::Event|{
+          the_interface().clicked(x as i32, y as i32);
+          event.stop_propagation();
+        }) as Box<Fn(web_sys::Event)>);
+        td.add_event_listener_with_callback("click", clicked_callback.as_ref().unchecked_ref()).unwrap();
+        clicked_callback.forget();
+      }
+    }
   }
 
   fn start_new_game(white_ai: bool, black_ai: bool) {
