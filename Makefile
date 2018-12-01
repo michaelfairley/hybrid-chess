@@ -1,5 +1,5 @@
 build:
 	npm run build
 
-sync:
-	cp -r dist/* ../m12y.com/hybrid-chess/
+push:
+	~/.config/itch/apps/butler/butler push dist m12y/hybrid-chess:html5
