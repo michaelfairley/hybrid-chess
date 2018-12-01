@@ -128,9 +128,20 @@ impl Interface {
       message.set_text_content(Some("AI is thinking..."));
     }
 
-    let setup = document.get_element_by_id("setup").expect("#setup");
-    let setup_class = if matches!(self.state, State::Setup) { "" } else { "hidden" };
-    setup.set_class_name(setup_class);
+    {
+      let show_start_buttons = match self.state {
+        State::Setup
+          | State::Checkmate(_)
+          | State::Stalemate(_)
+          => true,
+        _ => false,
+      };
+      let setup = document.get_element_by_id("setup").expect("#setup");
+      let setup_class = if show_start_buttons { "" } else { "hidden" };
+      if setup.class_name() != setup_class {
+        setup.set_class_name(&setup_class);
+      }
+    }
   }
 
   fn set_state(&mut self, new_state: State) {
