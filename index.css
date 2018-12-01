@@ -1,9 +1,13 @@
+body {
+  padding-bottom: 50px;
+}
+
 table {
   border-spacing: 0px;
   border: 1px black solid;
   margin: 0 auto;
   max-width: 700px;
-  width: 100%;
+  width: 99%;
 }
 
 td {
@@ -72,7 +76,7 @@ td.check.white {
 #message {
   margin: 0 auto;
   text-align: center;
-  font-size: 2.5rem;
+  font-size: 2.0rem;
 }
 
 #container {
@@ -83,6 +87,11 @@ button {
   font-size: 120%;
   border-radius: 0;
   -webkit-appearance: none;
+  margin-top: 10px;
+}
+
+p {
+  margin: 0;
 }
 
 .hidden {
