@@ -23,7 +23,6 @@ module.exports = {
 
     new WasmPackPlugin({
       crateDirectory: path.resolve(__dirname, "crate"),
-      forceWatch: true
     }),
 
     new CopyWebpackPlugin(['index.css', 'images/*'])
