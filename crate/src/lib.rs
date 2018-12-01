@@ -100,6 +100,11 @@ impl Piece {
   #[inline] pub fn is_knight(self) -> bool { (self.0 & KNIGHT) != 0 }
   #[inline] pub fn is_pawn(self)   -> bool { (self.0 & PAWN)   != 0 }
 
+  #[inline] pub fn is_hybrid(self) -> bool {
+    let bits_set = self.0.count_ones() - if self.is_white() { 1 } else { 0 };
+    bits_set > 1
+  }
+
   #[inline] pub fn merge(self, other: Self) -> Self { Piece(self.0 | other.0) }
 }
 

@@ -70,55 +70,50 @@ impl Interface {
         let loc = Loc((y * 8 + x) as i32);
 
         let cell_color = if ((x + y) % 2) == 0 { "white" } else { "black" };
-        td.set_class_name(cell_color);
+        let mut target_classes = cell_color.to_owned();
 
         if let Some((from, to)) = self.prev_move {
           if from == loc || to == loc {
-            td.class_list().add_1("prev-move").unwrap();
+            target_classes += " prev-move";
           }
         }
 
         if let State::Selected{selected_loc, ref available_moves, ref check_moves} = self.state {
           if loc == selected_loc {
-            td.class_list().add_1("selected").unwrap();
+            target_classes += " selected";
           } else if available_moves.contains(&loc) {
-            td.class_list().add_1("available-move").unwrap();
+            target_classes += " available-move";
           } else if check_moves.contains(&loc) {
-            td.class_list().add_1("check-move").unwrap();
+            target_classes += " check-move";
           }
         }
 
         let td = td.dyn_into::<web_sys::HtmlElement>().unwrap();
 
-        let style = td.style();
-
-        style.remove_property("background-image").unwrap();
-
         let piece = self.board.piece(loc);
 
-        if piece.is_empty() { continue; }
+        if !piece.is_empty() {
+          let piece_color = if piece.is_white() { "white" } else { "black" };
+          target_classes += " piece-";
+          target_classes += piece_color;
 
-        let mut images = vec![];
-        let color = if piece.is_white() { "white" } else { "black" };
-        let image_url = |piece| { format!("url('images/{}_{}.svg')", color, piece) };
+          if piece.is_king()   { target_classes += " king";   }
+          if piece.is_queen()  { target_classes += " queen";  }
+          if piece.is_rook()   { target_classes += " rook";   }
+          if piece.is_bishop() { target_classes += " bishop"; }
+          if piece.is_knight() { target_classes += " knight"; }
+          if piece.is_pawn()   { target_classes += " pawn";   }
 
-        if piece.is_king() { images.push(image_url("king")) };
-        if piece.is_queen() { images.push(image_url("queen")) };
-        if piece.is_rook() { images.push(image_url("rook")) };
-        if piece.is_bishop() { images.push(image_url("bishop")) };
-        if piece.is_knight() { images.push(image_url("knight")) };
-        if piece.is_pawn() { images.push(image_url("pawn")) };
+          if piece.is_hybrid() { target_classes += " hybrid"; }
 
-        let background_image = images.join(", ");
-        style.set_property("background-image", &background_image).unwrap();
-
-        if images.len() > 1 {
-          td.class_list().add_1("hybrid").unwrap();
+          if piece.is_king() && self.board.is_check(piece.is_white()) {
+            message.set_text_content(Some("Check!"));
+            target_classes += " check";
+          }
         }
 
-        if piece.is_king() && self.board.is_check(piece.is_white()) {
-          message.set_text_content(Some("Check!"));
-          td.class_list().add_1("check").unwrap();
+        if td.class_name() != target_classes {
+          td.set_class_name(&target_classes);
         }
       }
     }
