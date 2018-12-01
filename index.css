@@ -81,6 +81,8 @@ td.check.white {
 
 button {
   font-size: 120%;
+  border-radius: 0;
+  -webkit-appearance: none;
 }
 
 .hidden {
